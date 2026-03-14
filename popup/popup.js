@@ -18,11 +18,26 @@ function sendBg(action, payload = {}) {
 }
 
 // Load saved settings on open
-chrome.storage.sync.get({ crmBaseUrl: '', apiKey: '', userId: '', userName: '' }, (settings) => {
+chrome.storage.sync.get({ crmBaseUrl: '', apiKey: '', userId: '', userName: '', demoMode: false }, (settings) => {
   $('crmBaseUrl').value = settings.crmBaseUrl;
   $('apiKey').value = settings.apiKey;
   $('userId').value = settings.userId;
   $('userName').value = settings.userName;
+  $('demoMode').checked = settings.demoMode;
+});
+
+// Demo mode toggle
+$('demoMode').addEventListener('change', () => {
+  const enabled = $('demoMode').checked;
+  chrome.storage.sync.set({ demoMode: enabled }, () => {
+    const fb = $('demoFeedback');
+    if (enabled) {
+      setFeedback(fb, 'success', 'Modo Demo ativado! Recarregue o WhatsApp Web.');
+    } else {
+      setFeedback(fb, 'loading', 'Modo Demo desativado.');
+      setTimeout(() => { fb.textContent = ''; fb.className = 'popup-feedback'; }, 2000);
+    }
+  });
 });
 
 // Save settings

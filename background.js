@@ -6,6 +6,152 @@
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const RETRY_DELAYS = [2000, 4000, 8000, 16000];
 
+// ─── Mock / Demo mode ─────────────────────────────────────────────────────────
+
+const MOCK_CONTACTS = [
+  {
+    id: 'mock-001',
+    name: 'Carlos Eduardo Mendes',
+    phone: '',
+    email: 'carlos.mendes@empresa.com.br',
+    company: 'Mendes Tecnologia Ltda',
+    stage: 'Proposta',
+    status: 'Em negociação',
+    responsible: 'Você',
+    origin: 'WhatsApp',
+    crmUrl: '#',
+    nextAction: { description: 'Enviar proposta revisada', date: '2026-03-20', time: '10:00', priority: 'alta' },
+    tasks: [
+      { id: 't1', title: 'Ligar para confirmar reunião', dueDate: '2026-03-15', priority: 'alta', done: false },
+      { id: 't2', title: 'Enviar catálogo de produtos', dueDate: '2026-03-18', priority: 'media', done: false },
+    ],
+    timeline: [
+      { type: 'note', label: 'Observação', text: 'Cliente demonstrou interesse no plano anual.', date: '2026-03-10 14:32' },
+      { type: 'stage', label: 'Etapa', text: 'Movido de Qualificação → Proposta', date: '2026-03-08 09:15' },
+      { type: 'task', label: 'Tarefa', text: 'Tarefa criada: Enviar catálogo', date: '2026-03-07 11:00' },
+    ],
+  },
+  {
+    id: 'mock-002',
+    name: 'Ana Paula Ferreira',
+    phone: '',
+    email: 'ana.ferreira@startup.io',
+    company: 'Startup Inovação S.A.',
+    stage: 'Qualificação',
+    status: 'Novo contato',
+    responsible: 'Você',
+    origin: 'Indicação',
+    crmUrl: '#',
+    nextAction: null,
+    tasks: [],
+    timeline: [
+      { type: 'note', label: 'Observação', text: 'Primeiro contato via WhatsApp.', date: '2026-03-13 16:00' },
+    ],
+  },
+];
+
+// In-memory state for mock operations
+const mockState = {
+  contacts: JSON.parse(JSON.stringify(MOCK_CONTACTS)),
+  nextId: 100,
+};
+
+function getMockContact(index = 0) {
+  return mockState.contacts[index % mockState.contacts.length];
+}
+
+function delay(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function mockSearchContact(phone) {
+  await delay(400);
+  const normalised = normalisePhone(phone);
+  // Return different contacts for different phones to simulate variety
+  const idx = parseInt(normalised.slice(-1), 10) % 3;
+  if (idx === 2) return []; // Simulate "not found" for some numbers
+  const contact = JSON.parse(JSON.stringify(getMockContact(idx)));
+  contact.phone = normalised;
+  return [contact];
+}
+
+async function mockGetContact(contactId) {
+  await delay(200);
+  const found = mockState.contacts.find((c) => c.id === contactId);
+  if (found) return JSON.parse(JSON.stringify(found));
+  // Fallback: return first mock
+  const contact = JSON.parse(JSON.stringify(mockState.contacts[0]));
+  contact.id = contactId;
+  return contact;
+}
+
+async function mockUpdateStage(contactId, stage, status) {
+  await delay(300);
+  const contact = mockState.contacts.find((c) => c.id === contactId);
+  if (contact) {
+    contact.timeline.unshift({ type: 'stage', label: 'Etapa', text: `Movido para ${stage} · ${status}`, date: new Date().toLocaleString('pt-BR') });
+    contact.stage = stage;
+    contact.status = status;
+  }
+  return { ok: true };
+}
+
+async function mockAddObservation(contactId, text) {
+  await delay(300);
+  const contact = mockState.contacts.find((c) => c.id === contactId);
+  if (contact && text) {
+    contact.timeline.unshift({ type: 'note', label: 'Observação', text, date: new Date().toLocaleString('pt-BR') });
+  }
+  return { ok: true };
+}
+
+async function mockCreateTask({ contactId, title, dueDate, priority }) {
+  await delay(300);
+  const contact = mockState.contacts.find((c) => c.id === contactId);
+  const task = { id: `t-${mockState.nextId++}`, title, dueDate, priority, done: false };
+  if (contact) {
+    contact.tasks.unshift(task);
+    contact.timeline.unshift({ type: 'task', label: 'Tarefa', text: `Tarefa criada: ${title}`, date: new Date().toLocaleString('pt-BR') });
+  }
+  return task;
+}
+
+async function mockSaveNextAction({ contactId, description, date, time, priority }) {
+  await delay(300);
+  const contact = mockState.contacts.find((c) => c.id === contactId);
+  if (contact) {
+    contact.nextAction = { description, date, time, priority };
+    contact.timeline.unshift({ type: 'note', label: 'Próxima ação', text: description, date: new Date().toLocaleString('pt-BR') });
+  }
+  return { ok: true };
+}
+
+async function mockCreateLead({ name, phone, companyName }) {
+  await delay(400);
+  const newContact = {
+    id: `mock-${mockState.nextId++}`,
+    name,
+    phone: normalisePhone(phone),
+    email: '',
+    company: companyName || '',
+    stage: 'Novo Lead',
+    status: 'Aguardando contato',
+    responsible: 'Você',
+    origin: 'WhatsApp',
+    crmUrl: '#',
+    nextAction: null,
+    tasks: [],
+    timeline: [{ type: 'note', label: 'Lead criado', text: `Lead criado via extensão WhatsApp.`, date: new Date().toLocaleString('pt-BR') }],
+  };
+  mockState.contacts.push(newContact);
+  return newContact;
+}
+
+async function mockRecordTimeline() {
+  await delay(100);
+  return { ok: true };
+}
+
 // ─── In-memory cache ──────────────────────────────────────────────────────────
 const contactCache = new Map(); // phone -> { data, timestamp }
 
@@ -17,7 +163,7 @@ function isCacheValid(entry) {
 async function getSettings() {
   return new Promise((resolve) => {
     chrome.storage.sync.get(
-      { crmBaseUrl: '', apiKey: '', userId: '', userName: '' },
+      { crmBaseUrl: '', apiKey: '', userId: '', userName: '', demoMode: false },
       resolve
     );
   });
@@ -65,6 +211,9 @@ function buildHeaders(apiKey) {
  * Returns an array of matches (may be empty, single or multiple).
  */
 async function searchContactByPhone(phone) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockSearchContact(phone);
+
   const cacheKey = normalisePhone(phone);
 
   if (isCacheValid(contactCache.get(cacheKey))) {
@@ -88,6 +237,9 @@ async function searchContactByPhone(phone) {
  * Get the full CRM record for a single contact/lead/deal.
  */
 async function getContactRecord(contactId) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockGetContact(contactId);
+
   const { crmBaseUrl, apiKey } = await getSettings();
   const url = `${crmBaseUrl}/api/contacts/${contactId}`;
   return fetchWithRetry(url, { headers: buildHeaders(apiKey) });
@@ -97,6 +249,9 @@ async function getContactRecord(contactId) {
  * Update the stage / status of a record.
  */
 async function updateStage(contactId, stage, status) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockUpdateStage(contactId, stage, status);
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/contacts/${contactId}`;
   const body = {
@@ -121,6 +276,9 @@ async function updateStage(contactId, stage, status) {
  * Add a quick observation / note.
  */
 async function addObservation(contactId, text) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockAddObservation(contactId, text);
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/contacts/${contactId}/notes`;
   const body = {
@@ -144,6 +302,9 @@ async function addObservation(contactId, text) {
  * Create a task linked to a contact/deal.
  */
 async function createTask({ contactId, title, dueDate, priority, assigneeId }) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockCreateTask({ contactId, title, dueDate, priority });
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/tasks`;
   const body = {
@@ -167,6 +328,9 @@ async function createTask({ contactId, title, dueDate, priority, assigneeId }) {
  * Save the next scheduled action for a contact.
  */
 async function saveNextAction({ contactId, description, date, time, priority }) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockSaveNextAction({ contactId, description, date, time, priority });
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/contacts/${contactId}/next-action`;
   const body = {
@@ -192,6 +356,9 @@ async function saveNextAction({ contactId, description, date, time, priority }) 
  * Create a brand-new lead.
  */
 async function createLead({ name, phone, companyName }) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockCreateLead({ name, phone, companyName });
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/leads`;
   const body = {
@@ -214,6 +381,9 @@ async function createLead({ name, phone, companyName }) {
  * Record a timeline event for audit.
  */
 async function recordTimeline(contactId, eventType, payload) {
+  const { demoMode } = await getSettings();
+  if (demoMode) return mockRecordTimeline();
+
   const { crmBaseUrl, apiKey, userId, userName } = await getSettings();
   const url = `${crmBaseUrl}/api/contacts/${contactId}/timeline`;
   const body = {

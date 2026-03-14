@@ -113,3 +113,72 @@ input:focus {
 .popup-feedback--error { color: #ef4444; }
 .popup-feedback--success { color: #16a34a; }
 .popup-feedback--loading { color: #9ca3af; }
+
+/* ─── Demo mode section ──────────────────────────────────────────────────────── */
+.popup-section--demo {
+  background: #f0fdf4;
+  border-bottom: 1px solid #bbf7d0;
+}
+
+.demo-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.demo-toggle-row strong {
+  font-size: 13px;
+  color: #15803d;
+}
+
+.demo-hint {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ─── Toggle switch ──────────────────────────────────────────────────────────── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #d1d5db;
+  border-radius: 22px;
+  transition: background 0.2s;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: #00a884;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+}
