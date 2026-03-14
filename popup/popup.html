@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Painel CRM — Configurações</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="popup-header">
+    <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+    </svg>
+    <span>Painel CRM para WhatsApp</span>
+  </header>
+
+  <main class="popup-body">
+    <div class="popup-section">
+      <h2>Configuração do CRM</h2>
+
+      <label>URL base do CRM
+        <input type="url" id="crmBaseUrl" placeholder="https://seucrm.com" />
+      </label>
+
+      <label>Chave de API (API Key)
+        <input type="password" id="apiKey" placeholder="sk-••••••••••••••••" />
+      </label>
+
+      <label>Seu ID de usuário no CRM
+        <input type="text" id="userId" placeholder="user_123" />
+      </label>
+
+      <label>Seu nome
+        <input type="text" id="userName" placeholder="João Silva" />
+      </label>
+
+      <button class="popup-btn popup-btn--primary" id="saveBtn">Salvar configurações</button>
+      <div class="popup-feedback" id="saveFeedback"></div>
+    </div>
+
+    <div class="popup-divider"></div>
+
+    <div class="popup-section">
+      <h2>Diagnóstico</h2>
+      <button class="popup-btn popup-btn--ghost" id="testBtn">Testar conexão com o CRM</button>
+      <div class="popup-feedback" id="testFeedback"></div>
+    </div>
+
+    <div class="popup-divider"></div>
+
+    <div class="popup-section">
+      <h2>Cache</h2>
+      <button class="popup-btn popup-btn--ghost" id="clearCacheBtn">Limpar cache de contatos</button>
+      <div class="popup-feedback" id="cacheFeedback"></div>
+    </div>
+
+    <div class="popup-section popup-section--footer">
+      <p>Versão 1.0.0 · <a href="https://web.whatsapp.com" target="_blank">Abrir WhatsApp Web</a></p>
+    </div>
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>
